@@ -36,3 +36,8 @@ desktop.ini
 
 .claude
 .memsearch
+
+# Hermes API
+/voices/
+/scripts/output/
+.env

@@ -1,0 +1,65 @@
+{
+  "defaults": {
+    "spk": "examples/voice_07.wav",
+    "output_dir": "../indextts_api/scripts/output",
+    "emo_alpha": 0.6
+  },
+  "jobs": [
+    {
+      "name": "neutral",
+      "text": "大家好，這是一段中性語氣的測試語音。"
+    },
+    {
+      "name": "happy_preset",
+      "text": "今天天氣真好，心情特別愉快！",
+      "preset": "happy"
+    },
+    {
+      "name": "sad_preset",
+      "text": "沒想到會是這樣的結果，心裡有點難過。",
+      "preset": "sad"
+    },
+    {
+      "name": "angry_preset",
+      "text": "這件事實在太離譜了，令人非常生氣！",
+      "preset": "angry"
+    },
+    {
+      "name": "surprised_preset",
+      "text": "什麼？竟然會這樣？太令人震驚了！",
+      "preset": "surprised"
+    },
+    {
+      "name": "emo_audio_ref",
+      "text": "酒樓喪盡天良，開始借機競拍房間，哎，一群蠢貨。",
+      "emo_audio": "examples/emo_sad.wav",
+      "emo_alpha": 0.9
+    },
+    {
+      "name": "text_emotion",
+      "text": "快躲起來！是他要來了！他要來抓我們了！",
+      "spk": "examples/voice_12.wav",
+      "use_emo_text": true,
+      "emo_alpha": 0.6
+    },
+    {
+      "name": "separate_emo_text",
+      "text": "快躲起來！是他要來了！他要來抓我們了！",
+      "spk": "examples/voice_12.wav",
+      "use_emo_text": true,
+      "emo_text": "你嚇死我了！你是鬼嗎？",
+      "emo_alpha": 0.6
+    },
+    {
+      "name": "custom_vector",
+      "text": "對不起嘛！我的記性真的不太好。",
+      "spk": "examples/voice_09.wav",
+      "emo_vector": [0, 0, 0.8, 0, 0, 0, 0, 0]
+    },
+    {
+      "name": "alt_speaker",
+      "text": "Translate for me, what is a surprise!",
+      "spk": "examples/voice_01.wav"
+    }
+  ]
+}

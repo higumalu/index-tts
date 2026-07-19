@@ -87,11 +87,22 @@ torch_compile = [
 ]
 test = [
   "pytest>=7.0",
+  "pytest-asyncio",
+]
+# Hermes Agent Voice TTS API: `uv sync --extra hermes_api`
+hermes_api = [
+  "fastapi",
+  "httpx",
+  "pydantic>=2",
+  "soundfile",
+  "uvicorn",
 ]
 
 [tool.pytest.ini_options]
 markers = [
     "gpu: tests that require GPU and model checkpoints (deselect with '-m not gpu')",
+    "unit: fast unit tests",
+    "integration: API integration tests with fake engine",
 ]
 
 [project.urls]
@@ -102,12 +113,16 @@ Repository = "https://github.com/index-tts/index-tts.git"
 # Set the installed binary names and entry points.
 indextts = "indextts.cli:main"
 indextts2 = "indextts.cli_v2:main"
+indextts-hermes-bridge = "indextts_api.hermes_bridge:main"
 
 [build-system]
 # How to build the project as a CLI tool or PyPI package.
 # NOTE: Use `uv tool install -e .` to install the package as a CLI tool.
 requires = ["hatchling >= 1.27.0"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["indextts", "indextts_api"]
 
 [tool.uv]
 # Disable build isolation when building DeepSpeed from source.
