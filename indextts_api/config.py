@@ -12,6 +12,20 @@ def _bool_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return float(raw)
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return int(raw)
+
+
 @dataclass(frozen=True)
 class Settings:
     # Path to the index-tts repository (added to sys.path for imports).
@@ -31,6 +45,10 @@ class Settings:
     voices_dir: Path = Path(os.getenv("INDEXTTS_VOICES_DIR", "./voices")).expanduser().resolve()
     api_base_url: str = os.getenv("INDEXTTS_API_URL", "http://127.0.0.1:8001")
     default_voice_id: str = os.getenv("INDEXTTS_DEFAULT_VOICE_ID", "")
+    # Sampling defaults aligned with scripts/synthesize_speech.py
+    temperature: float = _float_env("INDEXTTS_TEMPERATURE", 0.8)
+    top_p: float = _float_env("INDEXTTS_TOP_P", 0.7)
+    top_k: int = _int_env("INDEXTTS_TOP_K", 30)
 
 
 settings = Settings()

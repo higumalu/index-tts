@@ -42,6 +42,9 @@ def test_hermes_bridge_writes_audio(tmp_path: Path) -> None:
     assert payload["voice_id"] == "a" * 32
     assert payload["text"] == "你好，Hermes。"
     assert payload["response_format"] == "audio"
+    assert payload["temperature"] == 0.8
+    assert payload["top_p"] == 0.7
+    assert payload["top_k"] == 30
 
 
 @pytest.mark.unit

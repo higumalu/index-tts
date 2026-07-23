@@ -32,6 +32,9 @@ async def synthesize(
             reference_wav_path=record.audio_path,
             use_emo_text=payload.use_emo_text,
             emo_alpha=payload.emo_alpha,
+            temperature=payload.temperature,
+            top_p=payload.top_p,
+            top_k=payload.top_k,
         )
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err

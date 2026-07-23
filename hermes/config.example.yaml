@@ -5,7 +5,10 @@
 # 前置步驟：
 # 1. 啟動 IndexTTS API 服務（預設 port 8001）
 # 2. 以 POST /v1/voices 上傳參考音檔，取得 voice_id
-# 3. 設定 INDEXTTS_DEFAULT_VOICE_ID 環境變數
+# 3. 設定 INDEXTTS_DEFAULT_VOICE_ID 環境變數（或 source repo 根目錄 .env）
+#
+# 目前預設 reference voice（reference_voice/temp_voice_1.wav）：
+#   export INDEXTTS_DEFAULT_VOICE_ID=96111604101b4d3bbdd65295aa63b538
 
 tts:
   provider: indextts

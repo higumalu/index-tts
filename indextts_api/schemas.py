@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from indextts_api.config import settings
+
 
 class ResponseFormat(str, Enum):
     audio = "audio"
@@ -35,6 +37,24 @@ class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1)
     use_emo_text: bool = False
     emo_alpha: float = Field(default=0.6, ge=0.0, le=1.0)
+    temperature: float = Field(
+        default_factory=lambda: settings.temperature,
+        ge=0.1,
+        le=2.0,
+        description="GPT 採樣溫度；越低越穩，雜訊感通常較少",
+    )
+    top_p: float = Field(
+        default_factory=lambda: settings.top_p,
+        ge=0.0,
+        le=1.0,
+        description="nucleus sampling：累積機率門檻",
+    )
+    top_k: int = Field(
+        default_factory=lambda: settings.top_k,
+        ge=0,
+        le=100,
+        description="每次只從機率最高的 K 個 token 抽樣",
+    )
     response_format: ResponseFormat = ResponseFormat.audio
 
 

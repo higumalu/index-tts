@@ -10,6 +10,9 @@ Environment variables:
     INDEXTTS_DEFAULT_VOICE_ID Required voice_id registered via POST /v1/voices
     INDEXTTS_USE_EMO_TEXT     Optional, set to 1/true to enable text-based emotion
     INDEXTTS_EMO_ALPHA        Optional emotion strength (default: 0.6)
+    INDEXTTS_TEMPERATURE      Optional GPT sampling temperature (default: 0.8)
+    INDEXTTS_TOP_P            Optional nucleus sampling (default: 0.7)
+    INDEXTTS_TOP_K            Optional top-k sampling (default: 30)
 """
 
 from __future__ import annotations
@@ -35,6 +38,13 @@ def _env_float(name: str, default: float) -> float:
     return float(raw)
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return int(raw)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Hermes → IndexTTS API TTS bridge")
     parser.add_argument("--text-file", required=True, help="UTF-8 text file from Hermes")
@@ -43,6 +53,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--api-url", default=os.getenv("INDEXTTS_API_URL", "http://127.0.0.1:8001"))
     parser.add_argument("--use-emo-text", action="store_true", default=_env_bool("INDEXTTS_USE_EMO_TEXT"))
     parser.add_argument("--emo-alpha", type=float, default=_env_float("INDEXTTS_EMO_ALPHA", 0.6))
+    parser.add_argument("--temperature", type=float, default=_env_float("INDEXTTS_TEMPERATURE", 0.8))
+    parser.add_argument("--top-p", type=float, default=_env_float("INDEXTTS_TOP_P", 0.7))
+    parser.add_argument("--top-k", type=int, default=_env_int("INDEXTTS_TOP_K", 30))
     parser.add_argument("--timeout", type=float, default=180.0)
     args = parser.parse_args(argv)
 
@@ -69,6 +82,9 @@ def main(argv: list[str] | None = None) -> int:
         "text": text,
         "use_emo_text": args.use_emo_text,
         "emo_alpha": args.emo_alpha,
+        "temperature": args.temperature,
+        "top_p": args.top_p,
+        "top_k": args.top_k,
         "response_format": "audio",
     }
 

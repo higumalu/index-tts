@@ -16,12 +16,11 @@ from pathlib import Path
 from typing import Any
 
 # ========= 可調整參數區（直接改這裡） =========
-# 以 indextts_api 目錄下的符號連結 `index-tts/` 為預設路徑
-# __file__ 在 scripts/ 底下，所以上一層才是 indextts_api/
+# 此腳本位於 scripts/，repo root 為上一層（與 indextts/、checkpoints/ 同層）
 _BASE_DIR = Path(__file__).resolve().parent.parent
-INDEXTTS_REPO_PATH = str(_BASE_DIR / "index-tts")
-MODEL_DIR = str(_BASE_DIR / "index-tts" / "checkpoints")
-CFG_PATH = str(_BASE_DIR / "index-tts" / "checkpoints" / "config.yaml")
+INDEXTTS_REPO_PATH = str(_BASE_DIR)
+MODEL_DIR = str(_BASE_DIR / "checkpoints")
+CFG_PATH = str(_BASE_DIR / "checkpoints" / "config.yaml")
 
 USE_FP16 = True
 USE_CUDA_KERNEL = False
@@ -29,13 +28,18 @@ USE_DEEPSPEED = False
 VERBOSE = False
 
 # 聲線參考音（不存在時會自動補到 <INDEXTTS_REPO_PATH>/examples/ 下找）
-SPK_AUDIO = "voice_01.wav"
+SPK_AUDIO = str(_BASE_DIR / "reference_voice" / "temp_voice_1.wav")
 
 # 要合成的文字
-TEXT = "你好，這是最簡單的 IndexTTS2 測試。"
+TEXT = "你好，這是最簡單的 Index TTS 2 測試。請問你今天過得怎麼樣？"
 
 # 輸出檔名（留空會自動用時間戳）
 OUTPUT_WAV = ""
+
+# 採樣參數（預設 temperature=0.8；調低可減少雜訊感／空氣聲）
+TEMPERATURE = 0.8
+TOP_P = 0.7
+TOP_K = 30
 
 # 情緒模式：只能擇一
 # 1) 不用情緒：全部留空/False
@@ -85,8 +89,8 @@ def _load_model(repo_path: Path, model_dir: Path, cfg_path: Path) -> Any:
         if not venv_python.is_file():
             raise RuntimeError(
                 f"IndexTTS2 依賴未安裝且找不到 venv python: {venv_python}\n"
-                "請先在 index-tts 目錄執行：\n"
-                "  cd /home/efai/bear/index-tts && uv sync --all-extras\n"
+                "請先在 repo root 執行：\n"
+                "  uv sync --all-extras\n"
                 "然後再直接執行本腳本。"
             )
 
@@ -110,6 +114,9 @@ def _build_kwargs(spk_audio: Path, output_path: Path) -> dict[str, Any]:
         "text": TEXT,
         "output_path": str(output_path),
         "verbose": VERBOSE,
+        "temperature": TEMPERATURE,
+        "top_p": TOP_P,
+        "top_k": TOP_K,
     }
 
     if EMO_AUDIO:

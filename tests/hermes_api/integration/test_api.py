@@ -32,6 +32,9 @@ class FakeTTSEngine(TTSEngine):
         reference_wav_path,
         use_emo_text: bool = False,
         emo_alpha: float = 0.6,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
     ) -> SynthesisResult:
         self.calls.append(
             {
@@ -39,6 +42,9 @@ class FakeTTSEngine(TTSEngine):
                 "reference_wav_path": str(reference_wav_path),
                 "use_emo_text": use_emo_text,
                 "emo_alpha": emo_alpha,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
             }
         )
         self._ready = True
@@ -131,6 +137,9 @@ def test_tts_audio_response(
             "text": "Hello world",
             "use_emo_text": True,
             "emo_alpha": 0.8,
+            "temperature": 0.5,
+            "top_p": 0.7,
+            "top_k": 20,
             "response_format": "audio",
         },
     )
@@ -145,6 +154,9 @@ def test_tts_audio_response(
     assert call["text"] == "Hello world"
     assert call["use_emo_text"] is True
     assert call["emo_alpha"] == 0.8
+    assert call["temperature"] == 0.5
+    assert call["top_p"] == 0.7
+    assert call["top_k"] == 20
 
 
 @pytest.mark.integration

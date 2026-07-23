@@ -84,6 +84,9 @@ class TTSEngine:
         reference_wav_path: Path | str,
         use_emo_text: bool = False,
         emo_alpha: float = 0.6,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
     ) -> SynthesisResult:
         if not text or not text.strip():
             raise ValueError("text 不可為空")
@@ -97,6 +100,9 @@ class TTSEngine:
             "spk_audio_prompt": str(ref_path),
             "text": text,
             "verbose": False,
+            "temperature": settings.temperature if temperature is None else temperature,
+            "top_p": settings.top_p if top_p is None else top_p,
+            "top_k": settings.top_k if top_k is None else top_k,
         }
         if use_emo_text:
             infer_kwargs["use_emo_text"] = True
