@@ -1,0 +1,41 @@
+services:
+  indextts-api:
+    build: .
+    image: indextts-api:latest
+    container_name: indextts-api
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./voices:/app/voices
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      INDEXTTS_REPO_PATH: /app
+      INDEXTTS_MODEL_DIR: /app/checkpoints
+      INDEXTTS_CFG_PATH: /app/checkpoints/config.yaml
+      INDEXTTS_VOICES_DIR: /app/voices
+      INDEXTTS_USE_FP16: ${INDEXTTS_USE_FP16:-true}
+      INDEXTTS_DEFAULT_VOICE_ID: ${INDEXTTS_DEFAULT_VOICE_ID:-}
+      INDEXTTS_TEMPERATURE: ${INDEXTTS_TEMPERATURE:-0.8}
+      INDEXTTS_TOP_P: ${INDEXTTS_TOP_P:-0.7}
+      INDEXTTS_TOP_K: ${INDEXTTS_TOP_K:-30}
+      # WSL2 / Docker: expandable_segments can be unreliable
+      PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:128
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      CUDA_VISIBLE_DEVICES: "0"
+    gpus: all
+    ipc: host
+    shm_size: "16gb"
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

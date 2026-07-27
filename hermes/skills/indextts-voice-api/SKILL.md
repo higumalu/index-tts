@@ -55,10 +55,15 @@ Docker 內 Hermes、API 在宿主機時用 `http://host.docker.internal:8001`。
 
 ## 啟動服務
 
-在 repo 根目錄：
+在 repo 根目錄（建議用 Compose，開機／中斷會自動重啟）：
 
 ```bash
-# 在 indextts_api repo 根目錄執行
+docker compose up -d --build
+```
+
+或手動：
+
+```bash
 uv sync --extra hermes_api
 uv run uvicorn indextts_api.main:app --host 0.0.0.0 --port 8001
 ```
