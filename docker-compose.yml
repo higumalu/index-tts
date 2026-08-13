@@ -21,6 +21,11 @@ services:
       INDEXTTS_TEMPERATURE: ${INDEXTTS_TEMPERATURE:-0.8}
       INDEXTTS_TOP_P: ${INDEXTTS_TOP_P:-0.7}
       INDEXTTS_TOP_K: ${INDEXTTS_TOP_K:-30}
+      # 閒置 N 秒沒有推論就卸載模型、把 VRAM 還給驅動（0 = 永不釋放）。
+      # 代價：釋放後第一個請求要重新載入模型（實測 8~27 秒）。
+      INDEXTTS_IDLE_UNLOAD_SEC: ${INDEXTTS_IDLE_UNLOAD_SEC:-600}
+      INDEXTTS_IDLE_CHECK_INTERVAL_SEC: ${INDEXTTS_IDLE_CHECK_INTERVAL_SEC:-30}
+      INDEXTTS_LOG_LEVEL: ${INDEXTTS_LOG_LEVEL:-INFO}
       # WSL2 / Docker: expandable_segments can be unreliable
       PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:128
       NVIDIA_VISIBLE_DEVICES: all

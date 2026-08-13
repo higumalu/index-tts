@@ -45,6 +45,15 @@ IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS2 HTTP 服務，預設
 | `INDEXTTS_MODEL_DIR` | `./checkpoints` | 模型目錄 |
 | `INDEXTTS_CFG_PATH` | `./checkpoints/config.yaml` | 模型設定 |
 | `INDEXTTS_USE_FP16` | `true` | FP16 推論 |
+| `INDEXTTS_IDLE_UNLOAD_SEC` | `600` | 閒置這麼多秒沒推論就卸載模型、釋放 VRAM（`0` = 永不釋放） |
+| `INDEXTTS_IDLE_CHECK_INTERVAL_SEC` | `30` | 閒置檢查間隔 |
+| `INDEXTTS_LOG_LEVEL` | `INFO` | 服務日誌等級 |
+
+模型是 lazy 載入的：服務啟動時不吃 VRAM，第一個 `/v1/tts` 才載入（實測 8~27 秒，
+視 page cache 冷熱）。閒置超過 `INDEXTTS_IDLE_UNLOAD_SEC` 會自動釋放約 7GB VRAM，
+之後的第一個請求要再等一次載入。
+`/v1/health` 的 `model_ready` 與 `model_idle_sec` 可以看目前狀態；health check 本身
+不會重置閒置計時。
 
 解析 API URL：
 

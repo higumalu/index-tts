@@ -20,4 +20,6 @@ def health(
         model_ready=engine.is_ready,
         voices_count=store.count(),
         indextts_available=indextts_importable(),
+        model_idle_sec=engine.idle_sec(),
+        idle_unload_sec=engine.idle_unload_sec,
     )

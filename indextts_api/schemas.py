@@ -69,3 +69,11 @@ class HealthResponse(BaseModel):
     model_ready: bool
     voices_count: int
     indextts_available: bool
+    model_idle_sec: float | None = Field(
+        default=None,
+        description="模型載入／上次推論至今的秒數；模型未載入時為 null",
+    )
+    idle_unload_sec: float = Field(
+        default=0.0,
+        description="閒置自動釋放 VRAM 的門檻秒數；0 表示停用",
+    )

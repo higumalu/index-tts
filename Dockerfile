@@ -37,7 +37,9 @@ ENV INDEXTTS_REPO_PATH=/app \
     INDEXTTS_MODEL_DIR=/app/checkpoints \
     INDEXTTS_CFG_PATH=/app/checkpoints/config.yaml \
     INDEXTTS_VOICES_DIR=/app/voices \
-    INDEXTTS_USE_FP16=true
+    INDEXTTS_USE_FP16=true \
+    INDEXTTS_IDLE_UNLOAD_SEC=600 \
+    INDEXTTS_IDLE_CHECK_INTERVAL_SEC=30
 
 RUN mkdir -p /app/voices /app/checkpoints
 

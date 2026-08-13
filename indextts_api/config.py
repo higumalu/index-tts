@@ -49,6 +49,11 @@ class Settings:
     temperature: float = _float_env("INDEXTTS_TEMPERATURE", 0.8)
     top_p: float = _float_env("INDEXTTS_TOP_P", 0.7)
     top_k: int = _int_env("INDEXTTS_TOP_K", 30)
+    # 閒置多久（秒）沒有推論就卸載模型並把 VRAM 還給驅動；<=0 表示永不釋放。
+    # 代價：釋放後的第一個請求要重新載入模型（實測 8s 熱 / 約 27s 冷 page cache）。
+    idle_unload_sec: float = _float_env("INDEXTTS_IDLE_UNLOAD_SEC", 600.0)
+    idle_check_interval_sec: float = _float_env("INDEXTTS_IDLE_CHECK_INTERVAL_SEC", 30.0)
+    log_level: str = os.getenv("INDEXTTS_LOG_LEVEL", "INFO")
 
 
 settings = Settings()
