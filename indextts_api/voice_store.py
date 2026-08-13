@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import shutil
 import time
@@ -10,6 +11,8 @@ from pathlib import Path
 
 from indextts_api.audio import decode_base64_wav
 from indextts_api.schemas import VoiceMetadata
+
+logger = logging.getLogger(__name__)
 
 _VOICE_ID_RE = re.compile(r"^[a-f0-9]{32}$")
 _REFERENCE_FILENAME = "reference.wav"
@@ -84,6 +87,8 @@ class VoiceStore:
             try:
                 results.append(VoiceMetadata(**json.loads(meta_path.read_text(encoding="utf-8"))))
             except Exception:
+                # 壞掉的 metadata 會讓 voice 從清單裡憑空消失，至少要留下痕跡。
+                logger.warning("略過無法解析的 metadata: %s", meta_path, exc_info=True)
                 continue
         results.sort(key=lambda m: m.created_at)
         return results

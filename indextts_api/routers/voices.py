@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from indextts_api.audio import AudioDecodeError
 from indextts_api.dependencies import get_voice_store
 from indextts_api.schemas import VoiceCreateRequest, VoiceListResponse, VoiceMetadata
 from indextts_api.voice_store import VoiceNotFoundError, VoiceStore
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/voices", tags=["voices"])
 
@@ -16,9 +20,17 @@ def create_voice(
     store: VoiceStore = Depends(get_voice_store),
 ) -> VoiceMetadata:
     try:
-        return store.create(payload.audio_base64, payload.reference_text)
+        metadata = store.create(payload.audio_base64, payload.reference_text)
     except AudioDecodeError as err:
+        logger.warning("參考音檔解碼失敗: %s", err)
         raise HTTPException(status_code=400, detail=str(err)) from err
+    logger.info(
+        "已註冊 voice_id=%s sample_rate=%d duration=%.2fs",
+        metadata.voice_id,
+        metadata.sample_rate,
+        metadata.duration_sec,
+    )
+    return metadata
 
 
 @router.get("", response_model=VoiceListResponse)
@@ -46,4 +58,5 @@ def delete_voice(
         store.delete(voice_id)
     except VoiceNotFoundError as err:
         raise HTTPException(status_code=404, detail=f"voice_id 不存在: {voice_id}") from err
+    logger.info("已刪除 voice_id=%s", voice_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

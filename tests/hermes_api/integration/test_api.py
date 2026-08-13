@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 from pathlib import Path
 from typing import Iterator
 
@@ -194,3 +195,79 @@ def test_tts_unknown_voice_returns_404(client: TestClient) -> None:
         },
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.integration
+def test_tts_success_carries_request_id(client: TestClient, wav_base64: str) -> None:
+    voice = client.post("/v1/voices", json={"audio_base64": wav_base64}).json()
+
+    for response_format in ("audio", "json"):
+        resp = client.post(
+            "/v1/tts",
+            json={
+                "voice_id": voice["voice_id"],
+                "text": "hi",
+                "response_format": response_format,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.headers.get("X-Request-Id"), f"{response_format} 缺少 X-Request-Id"
+
+
+@pytest.mark.integration
+def test_tts_failure_is_logged_and_not_leaked(
+    client: TestClient,
+    wav_base64: str,
+    fake_engine: FakeTTSEngine,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """推論爆掉時：伺服器留下 traceback，客戶端只拿到 request_id。"""
+    voice = client.post("/v1/voices", json={"audio_base64": wav_base64}).json()
+
+    secret = "CUDA error: device-side assert triggered at /internal/path.cu:1478"
+
+    def boom(**kwargs):
+        raise RuntimeError(secret)
+
+    fake_engine.generate = boom  # type: ignore[method-assign]
+
+    with caplog.at_level(logging.ERROR, logger="indextts_api.routers.tts"):
+        resp = client.post(
+            "/v1/tts",
+            json={"voice_id": voice["voice_id"], "text": "hi"},
+        )
+
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    request_id = resp.headers["X-Request-Id"]
+
+    # 客戶端看得到 request_id，看不到內部細節
+    assert request_id in detail
+    assert secret not in detail
+
+    # 伺服器端留下了完整 traceback，並且能用 request_id 對回來
+    records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert records, "推論失敗沒有留下 ERROR 級別日誌"
+    logged = "\n".join(r.getMessage() + (r.exc_text or "") for r in records)
+    assert request_id in logged
+    assert secret in logged
+
+
+@pytest.mark.integration
+def test_corrupt_metadata_is_logged(
+    client: TestClient,
+    wav_base64: str,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """壞掉的 metadata 會讓 voice 從清單消失，不能無聲無息。"""
+    voice = client.post("/v1/voices", json={"audio_base64": wav_base64}).json()
+    meta_path = tmp_path / "voices" / voice["voice_id"] / "metadata.json"
+    meta_path.write_text("{ not json", encoding="utf-8")
+
+    with caplog.at_level(logging.WARNING, logger="indextts_api.voice_store"):
+        resp = client.get("/v1/voices")
+
+    assert resp.status_code == 200
+    assert resp.json()["voices"] == []
+    assert any("metadata" in r.getMessage() for r in caplog.records)
