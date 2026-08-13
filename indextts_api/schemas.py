@@ -12,6 +12,16 @@ class ResponseFormat(str, Enum):
     json = "json"
 
 
+class Language(str, Enum):
+    """IndexTTS 2.5 支援的合成語言；2.0 會忽略這個欄位。"""
+
+    zh = "zh"
+    en = "en"
+    ja = "ja"
+    ar = "ar"
+    es = "es"
+
+
 class VoiceCreateRequest(BaseModel):
     audio_base64: str = Field(..., min_length=1, description="BASE64 編碼的 WAV 檔內容")
     reference_text: str = Field(
@@ -54,6 +64,16 @@ class TTSRequest(BaseModel):
         ge=0,
         le=100,
         description="每次只從機率最高的 K 個 token 抽樣",
+    )
+    lang: Language = Field(
+        default_factory=lambda: Language(settings.lang.lower()),
+        description="合成語言（僅 IndexTTS 2.5 有效）",
+    )
+    duration_factor: float = Field(
+        default_factory=lambda: settings.duration_factor,
+        ge=0.5,
+        le=2.0,
+        description="語速／時長係數：0.5 最快、1.0 原速、2.0 最慢（僅 IndexTTS 2.5 有效）",
     )
     response_format: ResponseFormat = ResponseFormat.audio
 

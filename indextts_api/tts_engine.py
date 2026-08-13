@@ -37,13 +37,41 @@ class SynthesisResult:
     duration_sec: float
 
 
+def model_version(cfg_path: Path | None = None) -> str:
+    """Read ``version`` from the checkpoint config ('2.0' / '2.5').
+
+    2.5 ships a separate inference module with a different constructor and an
+    extra required ``lang`` argument, so the whole call shape depends on this.
+    """
+    path = Path(cfg_path) if cfg_path is not None else settings.cfg_path
+    if not path.is_file():
+        return settings.default_model_version
+    try:
+        import yaml
+
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        version = loaded.get("version")
+    except Exception:
+        logger.warning("無法讀取 %s 的 version，退回預設值", path, exc_info=True)
+        return settings.default_model_version
+    if version is None:
+        return settings.default_model_version
+    return str(version)
+
+
+def _infer_module_name(version: str) -> str:
+    return "indextts.infer_v2_5" if str(version).startswith("2.5") else "indextts.infer_v2"
+
+
 def indextts_importable() -> bool:
-    """Return True when the index-tts package can be imported."""
+    """Return True when the inference module for the configured version imports."""
     repo_path = settings.repo_path
     if repo_path.is_dir() and str(repo_path) not in sys.path:
         sys.path.insert(0, str(repo_path))
     try:
-        import indextts.infer_v2  # noqa: F401
+        import importlib
+
+        importlib.import_module(_infer_module_name(model_version()))
     except ImportError:
         return False
     return True
@@ -85,7 +113,9 @@ class TTSEngine:
         *,
         idle_unload_sec: float | None = None,
         idle_check_interval_sec: float | None = None,
+        version: str | None = None,
     ) -> None:
+        self._model_version = version
         self._model: Any | None = None
         # RLock：unload() 可能在已持有鎖的區段內被呼叫。
         self._lock = threading.RLock()
@@ -118,19 +148,38 @@ class TTSEngine:
         if not settings.model_dir.is_dir():
             raise FileNotFoundError(f"找不到 model_dir: {settings.model_dir}")
 
-        from indextts.infer_v2 import IndexTTS2
+        import importlib
 
-        return IndexTTS2(
-            cfg_path=str(settings.cfg_path),
-            model_dir=str(settings.model_dir),
-            use_fp16=settings.use_fp16,
-            use_cuda_kernel=settings.use_cuda_kernel,
-            use_deepspeed=settings.use_deepspeed,
-        )
+        version = model_version()
+        module = importlib.import_module(_infer_module_name(version))
+        logger.info("載入 IndexTTS %s（%s）", version, module.__name__)
+
+        common = {
+            "cfg_path": str(settings.cfg_path),
+            "model_dir": str(settings.model_dir),
+            "use_cuda_kernel": settings.use_cuda_kernel,
+            "use_deepspeed": settings.use_deepspeed,
+        }
+        if str(version).startswith("2.5"):
+            # 2.5 換成 bf16，且沒有 use_fp16 參數。QwenEmotion 預設不載，
+            # 但 use_emo_text=True 少了它會直接報錯，所以由設定決定。
+            return module.IndexTTS2(
+                use_bf16=settings.use_bf16,
+                use_qwen_emo=settings.use_qwen_emo,
+                **common,
+            )
+        return module.IndexTTS2(use_fp16=settings.use_fp16, **common)
 
     @property
     def is_ready(self) -> bool:
         return self._model is not None
+
+    @property
+    def model_version(self) -> str:
+        """從 checkpoint config 讀到的版本，決定用哪個推論模組與呼叫形狀。"""
+        if self._model_version is None:
+            self._model_version = model_version()
+        return self._model_version
 
     @property
     def idle_unload_sec(self) -> float:
@@ -242,6 +291,8 @@ class TTSEngine:
         temperature: float | None = None,
         top_p: float | None = None,
         top_k: int | None = None,
+        lang: str | None = None,
+        duration_factor: float | None = None,
     ) -> SynthesisResult:
         if not text or not text.strip():
             raise ValueError("text 不可為空")
@@ -261,6 +312,13 @@ class TTSEngine:
         if use_emo_text:
             infer_kwargs["use_emo_text"] = True
             infer_kwargs["emo_alpha"] = emo_alpha
+
+        # 2.5 才有的參數；傳給 2.0 會 TypeError。
+        if str(self.model_version).startswith("2.5"):
+            infer_kwargs["lang"] = (settings.lang if lang is None else lang).lower()
+            infer_kwargs["duration_factor"] = (
+                settings.duration_factor if duration_factor is None else duration_factor
+            )
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             output_path = tmp.name

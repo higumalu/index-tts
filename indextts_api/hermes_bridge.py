@@ -13,6 +13,8 @@ Environment variables:
     INDEXTTS_TEMPERATURE      Optional GPT sampling temperature (default: 0.8)
     INDEXTTS_TOP_P            Optional nucleus sampling (default: 0.7)
     INDEXTTS_TOP_K            Optional top-k sampling (default: 30)
+    INDEXTTS_LANG             Optional synthesis language, 2.5 only (default: zh)
+    INDEXTTS_DURATION_FACTOR  Optional speed factor 0.5-2.0, 2.5 only (default: 1.0)
 """
 
 from __future__ import annotations
@@ -56,6 +58,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--temperature", type=float, default=_env_float("INDEXTTS_TEMPERATURE", 0.8))
     parser.add_argument("--top-p", type=float, default=_env_float("INDEXTTS_TOP_P", 0.7))
     parser.add_argument("--top-k", type=int, default=_env_int("INDEXTTS_TOP_K", 30))
+    parser.add_argument("--lang", default=os.getenv("INDEXTTS_LANG", "zh"))
+    parser.add_argument(
+        "--duration-factor", type=float, default=_env_float("INDEXTTS_DURATION_FACTOR", 1.0)
+    )
     parser.add_argument("--timeout", type=float, default=180.0)
     args = parser.parse_args(argv)
 
@@ -85,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
         "temperature": args.temperature,
         "top_p": args.top_p,
         "top_k": args.top_k,
+        "lang": args.lang.lower(),
+        "duration_factor": args.duration_factor,
         "response_format": "audio",
     }
 

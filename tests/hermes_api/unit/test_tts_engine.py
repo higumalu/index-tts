@@ -22,6 +22,7 @@ class FakeModel:
         self.calls = 0
         self.max_concurrent = 0
         self._active = 0
+        self.infer_kwargs: list[dict] = []
         self._counter_lock = threading.Lock()
         # 對應 IndexTTS2 的參考音快取，用來驗證 unload 會清掉
         self.cache_spk_cond = "sentinel"
@@ -31,6 +32,7 @@ class FakeModel:
         with self._counter_lock:
             self._active += 1
             self.calls += 1
+            self.infer_kwargs.append(dict(kwargs))
             self.max_concurrent = max(self.max_concurrent, self._active)
         try:
             time.sleep(self.infer_duration_sec)
@@ -60,9 +62,38 @@ def _engine(model: FakeModel, **kwargs) -> tuple[TTSEngine, list[int]]:
         load_count[0] += 1
         return model
 
-    defaults = {"idle_unload_sec": 0.0, "idle_check_interval_sec": 0.01}
+    defaults = {"idle_unload_sec": 0.0, "idle_check_interval_sec": 0.01, "version": "2.5"}
     defaults.update(kwargs)
     return TTSEngine(loader, **defaults), load_count
+
+
+@pytest.mark.unit
+def test_v25_receives_lang_and_duration_factor(reference_wav: Path) -> None:
+    model = FakeModel()
+    engine, _ = _engine(model, version="2.5")
+
+    engine.generate(
+        text="hi", reference_wav_path=reference_wav, lang="JA", duration_factor=1.5
+    )
+
+    kwargs = model.infer_kwargs[-1]
+    assert kwargs["lang"] == "ja", "lang 必須小寫化後傳給模型"
+    assert kwargs["duration_factor"] == 1.5
+
+
+@pytest.mark.unit
+def test_v20_never_receives_v25_only_kwargs(reference_wav: Path) -> None:
+    """2.0 的 infer() 沒有 lang/duration_factor，傳過去會 TypeError。"""
+    model = FakeModel()
+    engine, _ = _engine(model, version="2.0")
+
+    engine.generate(
+        text="hi", reference_wav_path=reference_wav, lang="ja", duration_factor=1.5
+    )
+
+    kwargs = model.infer_kwargs[-1]
+    assert "lang" not in kwargs
+    assert "duration_factor" not in kwargs
 
 
 @pytest.mark.unit

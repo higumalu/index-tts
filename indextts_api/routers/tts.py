@@ -42,10 +42,13 @@ async def synthesize(
         ) from err
 
     logger.info(
-        "[%s] 開始合成 voice_id=%s text_len=%d use_emo_text=%s temperature=%s top_p=%s top_k=%s",
+        "[%s] 開始合成 voice_id=%s text_len=%d lang=%s duration_factor=%s "
+        "use_emo_text=%s temperature=%s top_p=%s top_k=%s",
         request_id,
         payload.voice_id,
         len(payload.text),
+        payload.lang.value,
+        payload.duration_factor,
         payload.use_emo_text,
         payload.temperature,
         payload.top_p,
@@ -63,6 +66,8 @@ async def synthesize(
             temperature=payload.temperature,
             top_p=payload.top_p,
             top_k=payload.top_k,
+            lang=payload.lang.value,
+            duration_factor=payload.duration_factor,
         )
     except ValueError as err:
         logger.warning("[%s] 參數錯誤: %s", request_id, err)

@@ -6,7 +6,8 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - ./checkpoints:/app/checkpoints
+      # 預設 IndexTTS 2.5。要回退 2.0：INDEXTTS_CHECKPOINTS_DIR=./checkpoints
+      - ${INDEXTTS_CHECKPOINTS_DIR:-./checkpoints_2.5}:/app/checkpoints
       - ./voices:/app/voices
     env_file:
       - path: .env
@@ -17,6 +18,12 @@ services:
       INDEXTTS_CFG_PATH: /app/checkpoints/config.yaml
       INDEXTTS_VOICES_DIR: /app/voices
       INDEXTTS_USE_FP16: ${INDEXTTS_USE_FP16:-true}
+      INDEXTTS_USE_BF16: ${INDEXTTS_USE_BF16:-true}
+      # IndexTTS 2.5：合成語言（ZH/EN/JA/AR/ES）與時長係數（0.5 快 ~ 2.0 慢）
+      INDEXTTS_LANG: ${INDEXTTS_LANG:-zh}
+      INDEXTTS_DURATION_FACTOR: ${INDEXTTS_DURATION_FACTOR:-1.0}
+      # 關掉可省約 1.2GB VRAM，但 use_emo_text=true 會失效
+      INDEXTTS_USE_QWEN_EMO: ${INDEXTTS_USE_QWEN_EMO:-true}
       INDEXTTS_DEFAULT_VOICE_ID: ${INDEXTTS_DEFAULT_VOICE_ID:-}
       INDEXTTS_TEMPERATURE: ${INDEXTTS_TEMPERATURE:-0.8}
       INDEXTTS_TOP_P: ${INDEXTTS_TOP_P:-0.7}

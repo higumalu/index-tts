@@ -44,10 +44,22 @@ IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS2 HTTP 服務，預設
 | `INDEXTTS_VOICES_DIR` | `./voices` | voice library 目錄 |
 | `INDEXTTS_MODEL_DIR` | `./checkpoints` | 模型目錄 |
 | `INDEXTTS_CFG_PATH` | `./checkpoints/config.yaml` | 模型設定 |
-| `INDEXTTS_USE_FP16` | `true` | FP16 推論 |
+| `INDEXTTS_USE_FP16` | `true` | FP16 推論（IndexTTS 2.0） |
+| `INDEXTTS_USE_BF16` | `true` | BF16 推論（IndexTTS 2.5） |
+| `INDEXTTS_LANG` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es`（僅 2.5） |
+| `INDEXTTS_DURATION_FACTOR` | `1.0` | 語速 `0.5`（快）~ `2.0`（慢）（僅 2.5） |
+| `INDEXTTS_USE_QWEN_EMO` | `true` | 載入 QwenEmotion；關掉省約 1.2GB VRAM 但 `use_emo_text` 失效 |
 | `INDEXTTS_IDLE_UNLOAD_SEC` | `600` | 閒置這麼多秒沒推論就卸載模型、釋放 VRAM（`0` = 永不釋放） |
 | `INDEXTTS_IDLE_CHECK_INTERVAL_SEC` | `30` | 閒置檢查間隔 |
 | `INDEXTTS_LOG_LEVEL` | `INFO` | 服務日誌等級 |
+
+## 模型版本
+
+服務會讀 `checkpoints/config.yaml` 的 `version` 自動選擇推論模組：`2.5` → `indextts.infer_v2_5`（bf16、需要 `lang`、支援 `duration_factor`），`2.0` → `indextts.infer_v2`（fp16，無 `lang`）。
+
+目前部署為 **IndexTTS 2.5**，輸出取樣率 **22050 Hz**（2.0 是 24000 Hz）。
+下載權重：`uv run python scripts/download_checkpoints.py --model-dir checkpoints_2.5`
+（加 `--version 2` 可取回舊版）。
 
 模型是 lazy 載入的：服務啟動時不吃 VRAM，第一個 `/v1/tts` 才載入（實測 8~27 秒，
 視 page cache 冷熱）。閒置超過 `INDEXTTS_IDLE_UNLOAD_SEC` 會自動釋放約 7GB VRAM，
@@ -138,7 +150,7 @@ curl -s -X POST "$API/v1/tts" \
 ```json
 {
   "audio_base64": "...",
-  "sample_rate": 24000,
+  "sample_rate": 22050,
   "duration_sec": 1.23
 }
 ```
@@ -149,8 +161,12 @@ curl -s -X POST "$API/v1/tts" \
 | --- | --- | --- |
 | `voice_id` | 必填 | 已註冊音色 |
 | `text` | 必填 | 合成文字（非空） |
-| `use_emo_text` | `false` | 依文字內容推情感 |
+| `lang` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es`（僅 2.5；其他值回 `422`） |
+| `duration_factor` | `1.0` | 語速／時長 `0.5`（快）~ `2.0`（慢）（僅 2.5） |
+| `use_emo_text` | `false` | 依文字內容推情感（需 `INDEXTTS_USE_QWEN_EMO=true`） |
 | `emo_alpha` | `0.6` | 情感強度，範圍 `0.0–1.0` |
+| `temperature` | `0.8` | GPT 採樣溫度 |
+| `top_p` / `top_k` | `0.7` / `30` | 採樣參數 |
 | `response_format` | `audio` | `audio`（WAV bytes）或 `json` |
 
 ## 標準工作流（agent 照做）

@@ -36,6 +36,8 @@ class FakeTTSEngine(TTSEngine):
         temperature: float | None = None,
         top_p: float | None = None,
         top_k: int | None = None,
+        lang: str | None = None,
+        duration_factor: float | None = None,
     ) -> SynthesisResult:
         self.calls.append(
             {
@@ -46,6 +48,8 @@ class FakeTTSEngine(TTSEngine):
                 "temperature": temperature,
                 "top_p": top_p,
                 "top_k": top_k,
+                "lang": lang,
+                "duration_factor": duration_factor,
             }
         )
         self._ready = True
@@ -141,6 +145,8 @@ def test_tts_audio_response(
             "temperature": 0.5,
             "top_p": 0.7,
             "top_k": 20,
+            "lang": "ja",
+            "duration_factor": 1.25,
             "response_format": "audio",
         },
     )
@@ -158,6 +164,8 @@ def test_tts_audio_response(
     assert call["temperature"] == 0.5
     assert call["top_p"] == 0.7
     assert call["top_k"] == 20
+    assert call["lang"] == "ja"
+    assert call["duration_factor"] == 1.25
 
 
 @pytest.mark.integration

@@ -7,6 +7,7 @@ Uses the project's HuggingFace / ModelScope auto-switch
 Examples:
   uv run python scripts/download_checkpoints.py
   uv run python scripts/download_checkpoints.py --model-dir checkpoints
+  uv run python scripts/download_checkpoints.py --version 2      # 舊版 IndexTTS-2
   uv run python scripts/download_checkpoints.py --skip-aux
 """
 
@@ -16,19 +17,31 @@ import argparse
 import sys
 from pathlib import Path
 
-REQUIRED_FILES = (
-    "bpe.model",
-    "gpt.pth",
-    "s2mel.pth",
-    "wav2vec2bert_stats.pt",
-    "config.yaml",
-)
+# 每個版本的檔案組成不同：2.5 改用 tiktoken 詞表並多了 codec.pth，不再有 bpe.model。
+REQUIRED_FILES_BY_VERSION = {
+    "2": (
+        "bpe.model",
+        "gpt.pth",
+        "s2mel.pth",
+        "wav2vec2bert_stats.pt",
+        "config.yaml",
+    ),
+    "2.5": (
+        "multilingual_zh_ja_yue_char_del.tiktoken",
+        "codec.pth",
+        "gpt.pth",
+        "s2mel.pth",
+        "wav2vec2bert_stats.pt",
+        "config.yaml",
+    ),
+}
 
-REPO_ID = "IndexTeam/IndexTTS-2"
+DEFAULT_VERSION = "2.5"
+REPO_ID = "IndexTeam/IndexTTS-2.5"
 
 
-def _missing(model_dir: Path) -> list[str]:
-    return [name for name in REQUIRED_FILES if not (model_dir / name).is_file()]
+def _missing(model_dir: Path, required: tuple[str, ...]) -> list[str]:
+    return [name for name in required if not (model_dir / name).is_file()]
 
 
 def main() -> int:
@@ -39,9 +52,14 @@ def main() -> int:
         help="Target directory (default: checkpoints)",
     )
     parser.add_argument(
+        "--version",
+        default=DEFAULT_VERSION,
+        help=f"Model version to fetch (default: {DEFAULT_VERSION})",
+    )
+    parser.add_argument(
         "--repo-id",
-        default=REPO_ID,
-        help=f"Model repo id (default: {REPO_ID})",
+        default=None,
+        help="Override the model repo id (default: derived from --version)",
     )
     parser.add_argument(
         "--force",
@@ -55,10 +73,31 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    from indextts.utils.model_download import _VERSION_TO_REPO
+
+    if args.repo_id is None:
+        if args.version not in _VERSION_TO_REPO:
+            supported = ", ".join(sorted(_VERSION_TO_REPO))
+            print(
+                f"Unsupported --version {args.version!r}. Supported: {supported}",
+                file=sys.stderr,
+            )
+            return 1
+        args.repo_id = _VERSION_TO_REPO[args.version]
+
+    required = REQUIRED_FILES_BY_VERSION.get(args.version)
+    if required is None:
+        print(
+            f"Unknown --version {args.version!r}. Known: "
+            f"{', '.join(sorted(REQUIRED_FILES_BY_VERSION))}",
+            file=sys.stderr,
+        )
+        return 1
+
     model_dir = Path(args.model_dir).expanduser().resolve()
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    missing = _missing(model_dir)
+    missing = _missing(model_dir, required)
     if missing and not args.force:
         print(f"Missing required files in {model_dir}: {', '.join(missing)}")
         print(f"Downloading {args.repo_id} ...")
@@ -79,9 +118,9 @@ def main() -> int:
             print(f"Failed to download {args.repo_id}: {exc}", file=sys.stderr)
             return 1
     else:
-        print(f"Required IndexTTS-2 files already present in {model_dir}")
+        print(f"Required files already present in {model_dir}")
 
-    missing = _missing(model_dir)
+    missing = _missing(model_dir, required)
     if missing:
         print(
             f"Download incomplete, still missing: {', '.join(missing)}",
@@ -92,7 +131,7 @@ def main() -> int:
     from indextts.utils.model_download import ensure_config_available
 
     try:
-        ensure_config_available(str(model_dir))
+        ensure_config_available(str(model_dir), version=args.version)
     except Exception as exc:
         print(f"Failed to ensure config.yaml: {exc}", file=sys.stderr)
         return 1
@@ -110,7 +149,7 @@ def main() -> int:
             print(f"  {key}: {path}")
 
     print("Checkpoints ready.")
-    for name in REQUIRED_FILES:
+    for name in required:
         size = (model_dir / name).stat().st_size
         print(f"  {name}: {size:,} bytes")
     return 0

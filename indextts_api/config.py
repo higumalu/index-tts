@@ -39,7 +39,16 @@ class Settings:
     cfg_path: Path = Path(
         os.getenv("INDEXTTS_CFG_PATH", "./checkpoints/config.yaml")
     ).expanduser().resolve()
-    use_fp16: bool = _bool_env("INDEXTTS_USE_FP16", True)
+    use_fp16: bool = _bool_env("INDEXTTS_USE_FP16", True)  # IndexTTS 2.0
+    use_bf16: bool = _bool_env("INDEXTTS_USE_BF16", True)  # IndexTTS 2.5
+    # 讀不到 checkpoint config 的 `version` 時採用的版本。
+    default_model_version: str = os.getenv("INDEXTTS_MODEL_VERSION", "2.5")
+    # 2.5 專用：合成語言（ZH/EN/JA/AR/ES）與時長係數（0.5=快、2.0=慢）。
+    lang: str = os.getenv("INDEXTTS_LANG", "zh")
+    duration_factor: float = _float_env("INDEXTTS_DURATION_FACTOR", 1.0)
+    # 2.5 預設不載入 QwenEmotion，但那樣 use_emo_text=True 會直接報錯。
+    # 預設開啟以維持 2.0 的行為；不需要文字情感時可關掉省下約 1.2GB VRAM。
+    use_qwen_emo: bool = _bool_env("INDEXTTS_USE_QWEN_EMO", True)
     use_cuda_kernel: bool = _bool_env("INDEXTTS_USE_CUDA_KERNEL", False)
     use_deepspeed: bool = _bool_env("INDEXTTS_USE_DEEPSPEED", False)
     voices_dir: Path = Path(os.getenv("INDEXTTS_VOICES_DIR", "./voices")).expanduser().resolve()
