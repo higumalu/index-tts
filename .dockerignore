@@ -17,7 +17,7 @@ dist
 build
 .DS_Store
 .env
-checkpoints
+checkpoints*
 voices
 outputs
 cache

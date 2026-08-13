@@ -22,13 +22,18 @@ INDEXTTS_REPO_PATH = str(_BASE_DIR)
 MODEL_DIR = str(_BASE_DIR / "checkpoints")
 CFG_PATH = str(_BASE_DIR / "checkpoints" / "config.yaml")
 
-USE_FP16 = True
+USE_BF16 = True
 USE_CUDA_KERNEL = False
 USE_DEEPSPEED = False
 VERBOSE = False
 
 # 聲線參考音（不存在時會自動補到 <INDEXTTS_REPO_PATH>/examples/ 下找）
 SPK_AUDIO = str(_BASE_DIR / "reference_voice" / "temp_voice_1.wav")
+
+# 合成語言：zh / en / ja / ar / es
+LANG = "zh"
+# 語速／時長係數：0.5 快 ~ 2.0 慢
+DURATION_FACTOR = 1.0
 
 # 要合成的文字
 TEXT = "你好，這是最簡單的 Index TTS 2 測試。請問你今天過得怎麼樣？"
@@ -79,7 +84,7 @@ def _load_model(repo_path: Path, model_dir: Path, cfg_path: Path) -> Any:
         sys.path.insert(0, str(repo_path))
 
     try:
-        from indextts.infer_v2 import IndexTTS2  # type: ignore[import-not-found]
+        from indextts.infer_v2_5 import IndexTTS2  # type: ignore[import-not-found]
     except ModuleNotFoundError:
         # 你可能在 indextts_api 的 venv 裡執行，但 IndexTTS2 的依賴在 index-tts 的 venv 才有。
         # 自動切換到 index-tts/.venv/python 再跑一次，確保「直接跑腳本就能出 wav」。
@@ -102,7 +107,7 @@ def _load_model(repo_path: Path, model_dir: Path, cfg_path: Path) -> Any:
     return IndexTTS2(
         cfg_path=str(cfg_path),
         model_dir=str(model_dir),
-        use_fp16=USE_FP16,
+        use_bf16=USE_BF16,
         use_cuda_kernel=USE_CUDA_KERNEL,
         use_deepspeed=USE_DEEPSPEED,
     )
@@ -113,6 +118,8 @@ def _build_kwargs(spk_audio: Path, output_path: Path) -> dict[str, Any]:
         "spk_audio_prompt": str(spk_audio),
         "text": TEXT,
         "output_path": str(output_path),
+        "lang": LANG,
+        "duration_factor": DURATION_FACTOR,
         "verbose": VERBOSE,
         "temperature": TEMPERATURE,
         "top_p": TOP_P,

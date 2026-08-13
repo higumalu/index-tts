@@ -37,7 +37,6 @@ ENV INDEXTTS_REPO_PATH=/app \
     INDEXTTS_MODEL_DIR=/app/checkpoints \
     INDEXTTS_CFG_PATH=/app/checkpoints/config.yaml \
     INDEXTTS_VOICES_DIR=/app/voices \
-    INDEXTTS_USE_FP16=true \
     INDEXTTS_USE_BF16=true \
     INDEXTTS_LANG=zh \
     INDEXTTS_IDLE_UNLOAD_SEC=600 \

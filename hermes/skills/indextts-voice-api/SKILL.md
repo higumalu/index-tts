@@ -44,10 +44,9 @@ IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS2 HTTP 服務，預設
 | `INDEXTTS_VOICES_DIR` | `./voices` | voice library 目錄 |
 | `INDEXTTS_MODEL_DIR` | `./checkpoints` | 模型目錄 |
 | `INDEXTTS_CFG_PATH` | `./checkpoints/config.yaml` | 模型設定 |
-| `INDEXTTS_USE_FP16` | `true` | FP16 推論（IndexTTS 2.0） |
-| `INDEXTTS_USE_BF16` | `true` | BF16 推論（IndexTTS 2.5） |
-| `INDEXTTS_LANG` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es`（僅 2.5） |
-| `INDEXTTS_DURATION_FACTOR` | `1.0` | 語速 `0.5`（快）~ `2.0`（慢）（僅 2.5） |
+| `INDEXTTS_USE_BF16` | `true` | BF16 推論 |
+| `INDEXTTS_LANG` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es` |
+| `INDEXTTS_DURATION_FACTOR` | `1.0` | 語速 `0.5`（快）~ `2.0`（慢） |
 | `INDEXTTS_USE_QWEN_EMO` | `true` | 載入 QwenEmotion；關掉省約 1.2GB VRAM 但 `use_emo_text` 失效 |
 | `INDEXTTS_IDLE_UNLOAD_SEC` | `600` | 閒置這麼多秒沒推論就卸載模型、釋放 VRAM（`0` = 永不釋放） |
 | `INDEXTTS_IDLE_CHECK_INTERVAL_SEC` | `30` | 閒置檢查間隔 |
@@ -55,11 +54,11 @@ IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS2 HTTP 服務，預設
 
 ## 模型版本
 
-服務會讀 `checkpoints/config.yaml` 的 `version` 自動選擇推論模組：`2.5` → `indextts.infer_v2_5`（bf16、需要 `lang`、支援 `duration_factor`），`2.0` → `indextts.infer_v2`（fp16，無 `lang`）。
+本服務只跑 **IndexTTS 2.5**（`indextts.infer_v2_5`），不再支援 2.0。與 2.0 的差異：
+`lang` 為必填、多了 `duration_factor`、改用 bf16、輸出取樣率是 **22050 Hz**（2.0 為 24000 Hz）。
+若下游有寫死 24000 Hz 的地方要一併改。
 
-目前部署為 **IndexTTS 2.5**，輸出取樣率 **22050 Hz**（2.0 是 24000 Hz）。
 下載權重：`uv run python scripts/download_checkpoints.py --model-dir checkpoints_2.5`
-（加 `--version 2` 可取回舊版）。
 
 模型是 lazy 載入的：服務啟動時不吃 VRAM，第一個 `/v1/tts` 才載入（實測 8~27 秒，
 視 page cache 冷熱）。閒置超過 `INDEXTTS_IDLE_UNLOAD_SEC` 會自動釋放約 7GB VRAM，

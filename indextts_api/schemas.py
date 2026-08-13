@@ -13,7 +13,7 @@ class ResponseFormat(str, Enum):
 
 
 class Language(str, Enum):
-    """IndexTTS 2.5 支援的合成語言；2.0 會忽略這個欄位。"""
+    """IndexTTS 2.5 支援的合成語言。"""
 
     zh = "zh"
     en = "en"
@@ -67,13 +67,13 @@ class TTSRequest(BaseModel):
     )
     lang: Language = Field(
         default_factory=lambda: Language(settings.lang.lower()),
-        description="合成語言（僅 IndexTTS 2.5 有效）",
+        description="合成語言",
     )
     duration_factor: float = Field(
         default_factory=lambda: settings.duration_factor,
         ge=0.5,
         le=2.0,
-        description="語速／時長係數：0.5 最快、1.0 原速、2.0 最慢（僅 IndexTTS 2.5 有效）",
+        description="語速／時長係數：0.5 最快、1.0 原速、2.0 最慢",
     )
     response_format: ResponseFormat = ResponseFormat.audio
 

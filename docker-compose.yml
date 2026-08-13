@@ -6,7 +6,6 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      # 預設 IndexTTS 2.5。要回退 2.0：INDEXTTS_CHECKPOINTS_DIR=./checkpoints
       - ${INDEXTTS_CHECKPOINTS_DIR:-./checkpoints_2.5}:/app/checkpoints
       - ./voices:/app/voices
     env_file:
@@ -17,7 +16,6 @@ services:
       INDEXTTS_MODEL_DIR: /app/checkpoints
       INDEXTTS_CFG_PATH: /app/checkpoints/config.yaml
       INDEXTTS_VOICES_DIR: /app/voices
-      INDEXTTS_USE_FP16: ${INDEXTTS_USE_FP16:-true}
       INDEXTTS_USE_BF16: ${INDEXTTS_USE_BF16:-true}
       # IndexTTS 2.5：合成語言（ZH/EN/JA/AR/ES）與時長係數（0.5 快 ~ 2.0 慢）
       INDEXTTS_LANG: ${INDEXTTS_LANG:-zh}

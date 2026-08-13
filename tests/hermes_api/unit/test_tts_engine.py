@@ -62,15 +62,16 @@ def _engine(model: FakeModel, **kwargs) -> tuple[TTSEngine, list[int]]:
         load_count[0] += 1
         return model
 
-    defaults = {"idle_unload_sec": 0.0, "idle_check_interval_sec": 0.01, "version": "2.5"}
+    defaults = {"idle_unload_sec": 0.0, "idle_check_interval_sec": 0.01}
     defaults.update(kwargs)
     return TTSEngine(loader, **defaults), load_count
 
 
 @pytest.mark.unit
-def test_v25_receives_lang_and_duration_factor(reference_wav: Path) -> None:
+def test_lang_and_duration_factor_reach_the_model(reference_wav: Path) -> None:
+    """lang 是 IndexTTS 2.5 的必填參數，少了它 infer() 會 TypeError。"""
     model = FakeModel()
-    engine, _ = _engine(model, version="2.5")
+    engine, _ = _engine(model)
 
     engine.generate(
         text="hi", reference_wav_path=reference_wav, lang="JA", duration_factor=1.5
@@ -82,18 +83,15 @@ def test_v25_receives_lang_and_duration_factor(reference_wav: Path) -> None:
 
 
 @pytest.mark.unit
-def test_v20_never_receives_v25_only_kwargs(reference_wav: Path) -> None:
-    """2.0 的 infer() 沒有 lang/duration_factor，傳過去會 TypeError。"""
+def test_lang_defaults_come_from_settings(reference_wav: Path) -> None:
     model = FakeModel()
-    engine, _ = _engine(model, version="2.0")
+    engine, _ = _engine(model)
 
-    engine.generate(
-        text="hi", reference_wav_path=reference_wav, lang="ja", duration_factor=1.5
-    )
+    engine.generate(text="hi", reference_wav_path=reference_wav)
 
     kwargs = model.infer_kwargs[-1]
-    assert "lang" not in kwargs
-    assert "duration_factor" not in kwargs
+    assert kwargs["lang"] == "zh"
+    assert kwargs["duration_factor"] == 1.0
 
 
 @pytest.mark.unit
