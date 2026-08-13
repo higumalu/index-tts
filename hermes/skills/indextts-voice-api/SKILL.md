@@ -17,7 +17,7 @@ prerequisites:
 
 ## Overview
 
-IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS2 HTTP 服務，預設監聽 `http://127.0.0.1:8001`。流程固定為：
+IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS 2.5 HTTP 服務，預設監聽 `http://127.0.0.1:8001`。流程固定為：
 
 1. 上傳 BASE64 WAV 參考音 → 取得 `voice_id`
 2. 用 `voice_id` + 文字呼叫 `/v1/tts` 合成
@@ -42,7 +42,7 @@ IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS2 HTTP 服務，預設
 | `INDEXTTS_USE_EMO_TEXT` | 關閉 | bridge：從文字推情感（`1`/`true`） |
 | `INDEXTTS_EMO_ALPHA` | `0.6` | bridge：情感強度 `0.0–1.0` |
 | `INDEXTTS_VOICES_DIR` | `./voices` | voice library 目錄 |
-| `INDEXTTS_MODEL_DIR` | `./checkpoints` | 模型目錄 |
+| `INDEXTTS_MODEL_DIR` | `./checkpoints` | 模型目錄（compose 把 `./checkpoints_2.5` 掛到這） |
 | `INDEXTTS_CFG_PATH` | `./checkpoints/config.yaml` | 模型設定 |
 | `INDEXTTS_USE_BF16` | `true` | BF16 推論 |
 | `INDEXTTS_LANG` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es` |
@@ -94,7 +94,8 @@ uv run uvicorn indextts_api.main:app --host 0.0.0.0 --port 8001
 curl -s "${INDEXTTS_API_URL:-http://127.0.0.1:8001}/v1/health" | jq .
 ```
 
-預期欄位：`status`、`model_ready`、`voices_count`、`indextts_available`。
+預期欄位：`status`、`model_ready`、`voices_count`、`indextts_available`、
+`model_idle_sec`（模型未載入時為 `null`）、`idle_unload_sec`。
 
 ## API 速查
 
@@ -133,6 +134,8 @@ curl -s -X POST "$API/v1/tts" \
   -d "{
     \"voice_id\": \"${INDEXTTS_DEFAULT_VOICE_ID}\",
     \"text\": \"你好，這是 IndexTTS 合成測試。\",
+    \"lang\": \"zh\",
+    \"duration_factor\": 1.0,
     \"use_emo_text\": false,
     \"emo_alpha\": 0.6,
     \"response_format\": \"audio\"
@@ -140,7 +143,25 @@ curl -s -X POST "$API/v1/tts" \
   --output out.wav
 ```
 
-成功：`Content-Type: audio/wav`，標頭含 `X-Sample-Rate`、`X-Duration-Sec`。
+成功：`Content-Type: audio/wav`，標頭含 `X-Sample-Rate`（**22050**）、`X-Duration-Sec`、`X-Request-Id`。
+
+其他語言把 `lang` 換掉即可（`en`/`ja`/`ar`/`es`）：
+
+```bash
+curl -s -X POST "$API/v1/tts" \
+  -H "Content-Type: application/json" \
+  -d "{\"voice_id\": \"$VOICE_ID\", \"text\": \"Hello from IndexTTS.\", \"lang\": \"en\"}" \
+  --output out_en.wav
+```
+
+調語速（`0.5` 最快、`2.0` 最慢）：
+
+```bash
+curl -s -X POST "$API/v1/tts" \
+  -H "Content-Type: application/json" \
+  -d "{\"voice_id\": \"$VOICE_ID\", \"text\": \"慢慢說。\", \"lang\": \"zh\", \"duration_factor\": 1.5}" \
+  --output out_slow.wav
+```
 
 ### 合成語音（json）
 
@@ -160,8 +181,8 @@ curl -s -X POST "$API/v1/tts" \
 | --- | --- | --- |
 | `voice_id` | 必填 | 已註冊音色 |
 | `text` | 必填 | 合成文字（非空） |
-| `lang` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es`（僅 2.5；其他值回 `422`） |
-| `duration_factor` | `1.0` | 語速／時長 `0.5`（快）~ `2.0`（慢）（僅 2.5） |
+| `lang` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es`；其他值回 `422` |
+| `duration_factor` | `1.0` | 語速／時長 `0.5`（快）~ `2.0`（慢） |
 | `use_emo_text` | `false` | 依文字內容推情感（需 `INDEXTTS_USE_QWEN_EMO=true`） |
 | `emo_alpha` | `0.6` | 情感強度，範圍 `0.0–1.0` |
 | `temperature` | `0.8` | GPT 採樣溫度 |
@@ -191,7 +212,7 @@ export INDEXTTS_DEFAULT_VOICE_ID="$VOICE_ID"
 
 curl -s -X POST "$API/v1/tts" \
   -H "Content-Type: application/json" \
-  -d "{\"voice_id\": \"$VOICE_ID\", \"text\": \"測試語音。\", \"response_format\": \"audio\"}" \
+  -d "{\"voice_id\": \"$VOICE_ID\", \"text\": \"測試語音。\", \"lang\": \"zh\", \"response_format\": \"audio\"}" \
   --output /tmp/indextts-out.wav
 ```
 
@@ -248,7 +269,9 @@ Bridge 行為：讀 UTF-8 文字檔 → `POST /v1/tts`（`response_format=audio`
 | 連線失敗 | 確認 uvicorn 在 8001；Docker 改 `host.docker.internal` |
 | `400` audio_base64 | 必須是合法 BASE64 的 WAV，不是 mp3/路徑字串 |
 | `404` voice_id | 先 `GET /v1/voices`；id 須為 32 hex |
-| `500` TTS 推論失敗 | 查模型／GPU／`checkpoints`；看 API log |
+| `422` lang 不支援 | 只接受 `zh`/`en`/`ja`/`ar`/`es` |
+| `422` duration_factor 超界 | 範圍 `0.5`–`2.0` |
+| `500` TTS 推論失敗 | 回應會帶 `request_id`，用它撈日誌：`docker logs indextts-api \| grep <id>` |
 | bridge exit `2` | 設定 `INDEXTTS_DEFAULT_VOICE_ID` 或傳 `--voice-id` |
 | 首次 TTS 很慢 | lazy load 模型，屬預期 |
 
@@ -259,13 +282,18 @@ Bridge 行為：讀 UTF-8 文字檔 → `POST /v1/tts`（`response_format=audio`
 3. **port 搞混** — 本 API 預設 **8001**（不是 8000）。
 4. **用非 WAV 參考音** — decoder 只接受 WAV。
 5. **在 Hermes 裡改 provider 後沒設環境變數** — 沒有 default voice_id 會直接失敗。
-6. **以為 health 的 `model_ready: false` 代表壞掉** — 第一次成功 TTS 後才會變 `true`。
+6. **以為 health 的 `model_ready: false` 代表壞掉** — 第一次成功 TTS 後才會變 `true`；
+   閒置釋放後也會變回 `false`，同樣正常。
+7. **假設取樣率是 24000 Hz** — IndexTTS 2.5 輸出 **22050 Hz**，別在下游寫死。
+8. **忘了帶 `lang`** — 不帶會用 `INDEXTTS_LANG`（預設 `zh`）；中文文字配 `lang=en` 會念得很怪。
+9. **`use_emo_text` 沒作用或報錯** — 需要 `INDEXTTS_USE_QWEN_EMO=true`（預設開啟）。
 
 ## Verification Checklist
 
 - [ ] `GET /v1/health` 回 `status: ok`
 - [ ] `POST /v1/voices` 回 201 與 32-hex `voice_id`
-- [ ] `POST /v1/tts` 產出可播放的 `.wav`
+- [ ] `POST /v1/tts` 產出可播放的 `.wav`（`X-Sample-Rate: 22050`）
+- [ ] `lang` 換成 `en` 也能合成；`lang=de` 回 `422`
 - [ ] `INDEXTTS_DEFAULT_VOICE_ID` 已設定
 - [ ] （若接 Hermes）`indextts-hermes-bridge` 能寫出非空 WAV
 - [ ] （若接 Hermes）`~/.hermes/config.yaml` 的 `tts.provider` 為 `indextts`

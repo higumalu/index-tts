@@ -15,6 +15,8 @@ from indextts_api.main import create_app
 from indextts_api.tts_engine import SynthesisResult, TTSEngine
 from indextts_api.voice_store import VoiceStore
 
+SAMPLE_RATE = 22050  # IndexTTS 2.5 的輸出取樣率
+
 
 class FakeTTSEngine(TTSEngine):
     def __init__(self) -> None:
@@ -53,7 +55,7 @@ class FakeTTSEngine(TTSEngine):
             }
         )
         self._ready = True
-        sample_rate = 24000
+        sample_rate = SAMPLE_RATE
         audio = np.zeros(sample_rate // 2, dtype=np.float32)
         return SynthesisResult(audio=audio, sample_rate=sample_rate, duration_sec=0.5)
 
@@ -96,7 +98,7 @@ def test_voice_crud_flow(client: TestClient, wav_base64: str) -> None:
     assert create_resp.status_code == 201, create_resp.text
     meta = create_resp.json()
     voice_id = meta["voice_id"]
-    assert meta["sample_rate"] == 24000
+    assert meta["sample_rate"] == SAMPLE_RATE
     assert meta["reference_text"] == ""
 
     list_resp = client.get("/v1/voices")
@@ -153,8 +155,8 @@ def test_tts_audio_response(
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"] == "audio/wav"
     samples, sr = _decode_wav(resp.content)
-    assert sr == 24000
-    assert len(samples) == 12000
+    assert sr == SAMPLE_RATE
+    assert len(samples) == SAMPLE_RATE // 2
 
     assert len(fake_engine.calls) == 1
     call = fake_engine.calls[0]
@@ -185,12 +187,12 @@ def test_tts_json_response(client: TestClient, wav_base64: str) -> None:
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["sample_rate"] == 24000
+    assert body["sample_rate"] == SAMPLE_RATE
     assert body["duration_sec"] == pytest.approx(0.5, abs=0.01)
     decoded = base64.b64decode(body["audio_base64"])
     samples, sr = _decode_wav(decoded)
-    assert sr == 24000
-    assert len(samples) == 12000
+    assert sr == SAMPLE_RATE
+    assert len(samples) == SAMPLE_RATE // 2
 
 
 @pytest.mark.integration

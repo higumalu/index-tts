@@ -27,7 +27,7 @@ def isolate_indextts_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(key, raising=False)
 
 
-def _make_wav_bytes(*, sample_rate: int = 24000, duration_sec: float = 1.0, freq: float = 220.0) -> bytes:
+def _make_wav_bytes(*, sample_rate: int = 22050, duration_sec: float = 1.0, freq: float = 220.0) -> bytes:
     t = np.linspace(0, duration_sec, int(sample_rate * duration_sec), endpoint=False)
     wav = (0.2 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
     buffer = io.BytesIO()

@@ -9,6 +9,14 @@
 #
 # 目前預設 reference voice（reference_voice/temp_voice_1.wav）：
 #   export INDEXTTS_DEFAULT_VOICE_ID=96111604101b4d3bbdd65295aa63b538
+#
+# 服務跑的是 IndexTTS 2.5，輸出為 22050 Hz WAV。bridge 可選的環境變數：
+#   export INDEXTTS_LANG=zh              # zh / en / ja / ar / es
+#   export INDEXTTS_DURATION_FACTOR=1.0  # 0.5 最快 ~ 2.0 最慢
+#   export INDEXTTS_USE_EMO_TEXT=1       # 依文字推情感
+#   export INDEXTTS_EMO_ALPHA=0.6
+#
+# 對應的 bridge 旗標：--lang / --duration-factor / --use-emo-text / --emo-alpha
 
 tts:
   provider: indextts
@@ -32,3 +40,7 @@ tts:
 #       output_format: wav
 #       timeout: 180
 #       voice_compatible: true
+
+# 指定語言／語速（也可用環境變數，見上方）：
+#
+#       command: "indextts-hermes-bridge --lang en --duration-factor 1.2 --text-file {input_path} --out {output_path}"

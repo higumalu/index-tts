@@ -26,7 +26,7 @@ class VoiceCreateRequest(BaseModel):
     audio_base64: str = Field(..., min_length=1, description="BASE64 編碼的 WAV 檔內容")
     reference_text: str = Field(
         default="",
-        description="參考音檔逐字稿（IndexTTS2 可選，保留供日後擴充）",
+        description="參考音檔逐字稿（IndexTTS 2.5 可選，保留供日後擴充）",
     )
 
 

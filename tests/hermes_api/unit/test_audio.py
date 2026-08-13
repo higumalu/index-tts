@@ -10,7 +10,7 @@ import soundfile as sf
 from indextts_api.audio import decode_base64_wav, encode_wav_base64, wav_bytes
 
 
-def _make_wav_bytes(sample_rate: int = 24000) -> bytes:
+def _make_wav_bytes(sample_rate: int = 22050) -> bytes:
     t = np.linspace(0, 0.5, sample_rate // 2, endpoint=False)
     wav = (0.1 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
     buffer = io.BytesIO()
@@ -23,8 +23,8 @@ def test_decode_and_encode_roundtrip() -> None:
     raw = _make_wav_bytes()
     b64 = base64.b64encode(raw).decode("ascii")
     decoded_raw, samples, sr = decode_base64_wav(b64)
-    assert sr == 24000
-    assert len(samples) == 12000
+    assert sr == 22050
+    assert len(samples) == 22050 // 2
     assert decoded_raw == raw
 
     reencoded = encode_wav_base64(samples, sr)
@@ -36,7 +36,7 @@ def test_decode_and_encode_roundtrip() -> None:
 @pytest.mark.unit
 def test_wav_bytes() -> None:
     audio = np.zeros(1000, dtype=np.float32)
-    payload = wav_bytes(audio, 24000)
+    payload = wav_bytes(audio, 22050)
     data, sr = sf.read(io.BytesIO(payload), dtype="float32")
-    assert sr == 24000
+    assert sr == 22050
     assert len(data) == 1000

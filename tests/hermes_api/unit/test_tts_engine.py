@@ -11,7 +11,7 @@ import soundfile as sf
 
 from indextts_api.tts_engine import TTSEngine
 
-SAMPLE_RATE = 24000
+SAMPLE_RATE = 22050
 
 
 class FakeModel:

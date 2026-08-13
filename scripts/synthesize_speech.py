@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""最簡單的 IndexTTS2 腳本：直接執行就輸出 wav。
+"""最簡單的 IndexTTS 2.5 腳本：直接執行就輸出 wav。
 
 用法：
 1. 只改下面「可調整參數區」的常數
@@ -16,11 +16,11 @@ from pathlib import Path
 from typing import Any
 
 # ========= 可調整參數區（直接改這裡） =========
-# 此腳本位於 scripts/，repo root 為上一層（與 indextts/、checkpoints/ 同層）
+# 此腳本位於 scripts/，repo root 為上一層（與 indextts/、checkpoints_2.5/ 同層）
 _BASE_DIR = Path(__file__).resolve().parent.parent
 INDEXTTS_REPO_PATH = str(_BASE_DIR)
-MODEL_DIR = str(_BASE_DIR / "checkpoints")
-CFG_PATH = str(_BASE_DIR / "checkpoints" / "config.yaml")
+MODEL_DIR = str(_BASE_DIR / "checkpoints_2.5")
+CFG_PATH = str(_BASE_DIR / "checkpoints_2.5" / "config.yaml")
 
 USE_BF16 = True
 USE_CUDA_KERNEL = False

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Download IndexTTS-2 model weights into ``./checkpoints``.
+"""Download IndexTTS-2.5 model weights into ``./checkpoints_2.5``.
 
 Uses the project's HuggingFace / ModelScope auto-switch
 (``indextts.utils.model_download``).
 
+本服務只跑 2.5；docker-compose 預設把 ./checkpoints_2.5 掛到容器的
+/app/checkpoints。
+
 Examples:
-  uv run python scripts/download_checkpoints.py
-  uv run python scripts/download_checkpoints.py --model-dir checkpoints
-  uv run python scripts/download_checkpoints.py --version 2      # 舊版 IndexTTS-2
-  uv run python scripts/download_checkpoints.py --skip-aux
+  uv run python scripts/download_checkpoints.py --model-dir checkpoints_2.5
+  uv run python scripts/download_checkpoints.py --model-dir checkpoints_2.5 --skip-aux
+  uv run python scripts/download_checkpoints.py --model-dir checkpoints_2.5 --force
 """
 
 from __future__ import annotations
@@ -17,49 +19,35 @@ import argparse
 import sys
 from pathlib import Path
 
-# 每個版本的檔案組成不同：2.5 改用 tiktoken 詞表並多了 codec.pth，不再有 bpe.model。
-REQUIRED_FILES_BY_VERSION = {
-    "2": (
-        "bpe.model",
-        "gpt.pth",
-        "s2mel.pth",
-        "wav2vec2bert_stats.pt",
-        "config.yaml",
-    ),
-    "2.5": (
-        "multilingual_zh_ja_yue_char_del.tiktoken",
-        "codec.pth",
-        "gpt.pth",
-        "s2mel.pth",
-        "wav2vec2bert_stats.pt",
-        "config.yaml",
-    ),
-}
+# 2.5 用 tiktoken 詞表（不是 2.0 的 bpe.model）並多了 codec.pth。
+REQUIRED_FILES = (
+    "multilingual_zh_ja_yue_char_del.tiktoken",
+    "codec.pth",
+    "gpt.pth",
+    "s2mel.pth",
+    "wav2vec2bert_stats.pt",
+    "config.yaml",
+)
 
-DEFAULT_VERSION = "2.5"
+MODEL_VERSION = "2.5"
 REPO_ID = "IndexTeam/IndexTTS-2.5"
 
 
-def _missing(model_dir: Path, required: tuple[str, ...]) -> list[str]:
-    return [name for name in required if not (model_dir / name).is_file()]
+def _missing(model_dir: Path) -> list[str]:
+    return [name for name in REQUIRED_FILES if not (model_dir / name).is_file()]
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Download IndexTTS-2 checkpoints")
+    parser = argparse.ArgumentParser(description="Download IndexTTS-2.5 checkpoints")
     parser.add_argument(
         "--model-dir",
-        default="checkpoints",
-        help="Target directory (default: checkpoints)",
-    )
-    parser.add_argument(
-        "--version",
-        default=DEFAULT_VERSION,
-        help=f"Model version to fetch (default: {DEFAULT_VERSION})",
+        default="checkpoints_2.5",
+        help="Target directory (default: checkpoints_2.5)",
     )
     parser.add_argument(
         "--repo-id",
-        default=None,
-        help="Override the model repo id (default: derived from --version)",
+        default=REPO_ID,
+        help=f"Model repo id (default: {REPO_ID})",
     )
     parser.add_argument(
         "--force",
@@ -73,31 +61,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    from indextts.utils.model_download import _VERSION_TO_REPO
-
-    if args.repo_id is None:
-        if args.version not in _VERSION_TO_REPO:
-            supported = ", ".join(sorted(_VERSION_TO_REPO))
-            print(
-                f"Unsupported --version {args.version!r}. Supported: {supported}",
-                file=sys.stderr,
-            )
-            return 1
-        args.repo_id = _VERSION_TO_REPO[args.version]
-
-    required = REQUIRED_FILES_BY_VERSION.get(args.version)
-    if required is None:
-        print(
-            f"Unknown --version {args.version!r}. Known: "
-            f"{', '.join(sorted(REQUIRED_FILES_BY_VERSION))}",
-            file=sys.stderr,
-        )
-        return 1
-
     model_dir = Path(args.model_dir).expanduser().resolve()
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    missing = _missing(model_dir, required)
+    missing = _missing(model_dir)
     if missing and not args.force:
         print(f"Missing required files in {model_dir}: {', '.join(missing)}")
         print(f"Downloading {args.repo_id} ...")
@@ -120,7 +87,7 @@ def main() -> int:
     else:
         print(f"Required files already present in {model_dir}")
 
-    missing = _missing(model_dir, required)
+    missing = _missing(model_dir)
     if missing:
         print(
             f"Download incomplete, still missing: {', '.join(missing)}",
@@ -131,7 +98,7 @@ def main() -> int:
     from indextts.utils.model_download import ensure_config_available
 
     try:
-        ensure_config_available(str(model_dir), version=args.version)
+        ensure_config_available(str(model_dir), version=MODEL_VERSION)
     except Exception as exc:
         print(f"Failed to ensure config.yaml: {exc}", file=sys.stderr)
         return 1
@@ -149,7 +116,7 @@ def main() -> int:
             print(f"  {key}: {path}")
 
     print("Checkpoints ready.")
-    for name in required:
+    for name in REQUIRED_FILES:
         size = (model_dir / name).stat().st_size
         print(f"  {name}: {size:,} bytes")
     return 0
