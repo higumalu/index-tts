@@ -27,4 +27,4 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Run tests (no GPU)
-        run: uv run --extra test pytest -m "not gpu" -v
+        run: uv run --extra test --extra hermes_api pytest -m "not gpu" -v
