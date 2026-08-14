@@ -43,6 +43,9 @@ class Settings:
     # 合成語言（ZH/EN/JA/AR/ES）與時長係數（0.5=快、2.0=慢）。
     lang: str = os.getenv("INDEXTTS_LANG", "zh")
     duration_factor: float = _float_env("INDEXTTS_DURATION_FACTOR", 1.0)
+    # 文字正規化：數字轉唸法、標點清理，中文另會轉成簡體字。
+    # 關掉可保留原文（繁體不被轉換），但數字／符號就得自己寫成唸法。
+    text_normalization: bool = _bool_env("INDEXTTS_TEXT_NORMALIZATION", True)
     # 上游預設不載入 QwenEmotion，但那樣 use_emo_text=True 會直接報錯。
     # 預設開啟；不需要文字情感時可關掉省下約 1.2GB VRAM。
     use_qwen_emo: bool = _bool_env("INDEXTTS_USE_QWEN_EMO", True)

@@ -47,6 +47,7 @@ IndexTTS Voice API 是以 `voice_id` 為核心的 IndexTTS 2.5 HTTP 服務，預
 | `INDEXTTS_USE_BF16` | `true` | BF16 推論 |
 | `INDEXTTS_LANG` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es` |
 | `INDEXTTS_DURATION_FACTOR` | `1.0` | 語速 `0.5`（快）~ `2.0`（慢） |
+| `INDEXTTS_TEXT_NORMALIZATION` | `true` | 文字正規化；關掉可保留繁體原文 |
 | `INDEXTTS_USE_QWEN_EMO` | `true` | 載入 QwenEmotion；關掉省約 1.2GB VRAM 但 `use_emo_text` 失效 |
 | `INDEXTTS_IDLE_UNLOAD_SEC` | `600` | 閒置這麼多秒沒推論就卸載模型、釋放 VRAM（`0` = 永不釋放） |
 | `INDEXTTS_IDLE_CHECK_INTERVAL_SEC` | `30` | 閒置檢查間隔 |
@@ -172,6 +173,25 @@ curl -s -X POST "$API/v1/tts" \
   --output out_en.wav
 ```
 
+保留繁體原文（關掉正規化）：
+
+```bash
+curl -s -X POST "$API/v1/tts" \
+  -H "Content-Type: application/json" \
+  -d "{\"voice_id\": \"$VOICE_ID\", \"text\": \"這是繁體原文。\", \"lang\": \"zh\", \"text_normalization\": false}" \
+  --output out_raw.wav
+```
+
+實測差異（同一句「這是繁體字的煙霧測試，共 3 個項目。」）：
+
+| `text_normalization` | 模型實際收到 |
+| --- | --- |
+| `true`（預設） | `这是繁体字的烟雾测试,共 三个项目.` |
+| `false` | `這是繁體字的煙霧測試，共 3 個項目。` |
+
+關掉後繁體保留，但**數字不再展開成唸法**（`3` 不會變「三」），阿拉伯數字、\
+單位、符號都得自己寫成要唸的樣子。日常用途建議維持預設。
+
 調語速（`0.5` 最快、`2.0` 最慢）：
 
 ```bash
@@ -201,6 +221,7 @@ curl -s -X POST "$API/v1/tts" \
 | `text` | 必填 | 合成文字（非空） |
 | `lang` | `zh` | 合成語言 `zh`/`en`/`ja`/`ar`/`es`；其他值回 `422` |
 | `duration_factor` | `1.0` | 語速／時長 `0.5`（快）~ `2.0`（慢） |
+| `text_normalization` | `true` | 數字轉唸法＋標點清理，中文會轉簡體；`false` 保留原文 |
 | `use_emo_text` | `false` | 依文字內容推情感（需 `INDEXTTS_USE_QWEN_EMO=true`） |
 | `emo_alpha` | `0.6` | 情感強度，範圍 `0.0–1.0` |
 | `temperature` | `0.8` | GPT 採樣溫度 |
@@ -304,8 +325,9 @@ Bridge 行為：讀 UTF-8 文字檔 → `POST /v1/tts`（`response_format=audio`
 6. **以為 health 的 `model_ready: false` 代表壞掉** — 第一次成功 TTS 後才會變 `true`；
    閒置釋放後也會變回 `false`，同樣正常。
 7. **假設取樣率是 24000 Hz** — IndexTTS 2.5 輸出 **22050 Hz**，別在下游寫死。
-8. **忘了帶 `lang`** — 不帶會用 `INDEXTTS_LANG`（預設 `zh`）；中文文字配 `lang=en` 會念得很怪。
-9. **`use_emo_text` 沒作用或報錯** — 需要 `INDEXTTS_USE_QWEN_EMO=true`（預設開啟）。
+8. **關掉 `text_normalization` 又送阿拉伯數字** — 數字不會展開成唸法，要自己寫「三」。
+9. **忘了帶 `lang`** — 不帶會用 `INDEXTTS_LANG`（預設 `zh`）；中文文字配 `lang=en` 會念得很怪。
+10. **`use_emo_text` 沒作用或報錯** — 需要 `INDEXTTS_USE_QWEN_EMO=true`（預設開啟）。
 
 ## Verification Checklist
 

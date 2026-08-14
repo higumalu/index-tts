@@ -319,6 +319,7 @@ class TTSEngine:
         top_k: int | None = None,
         lang: str | None = None,
         duration_factor: float | None = None,
+        text_normalization: bool | None = None,
     ) -> SynthesisResult:
         if not text or not text.strip():
             raise ValueError("text 不可為空")
@@ -338,6 +339,9 @@ class TTSEngine:
             "lang": (settings.lang if lang is None else lang).lower(),
             "duration_factor": (
                 settings.duration_factor if duration_factor is None else duration_factor
+            ),
+            "text_normalization": (
+                settings.text_normalization if text_normalization is None else text_normalization
             ),
         }
         if use_emo_text:

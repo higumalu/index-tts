@@ -75,6 +75,13 @@ class TTSRequest(BaseModel):
         le=2.0,
         description="語速／時長係數：0.5 最快、1.0 原速、2.0 最慢",
     )
+    text_normalization: bool = Field(
+        default_factory=lambda: settings.text_normalization,
+        description=(
+            "文字正規化：數字轉唸法、標點清理，中文另會轉成簡體字。"
+            "關掉可保留原文，但數字／符號需自行寫成唸法。"
+        ),
+    )
     response_format: ResponseFormat = ResponseFormat.audio
 
 

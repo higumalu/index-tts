@@ -13,10 +13,12 @@
 # 服務跑的是 IndexTTS 2.5，輸出為 22050 Hz WAV。bridge 可選的環境變數：
 #   export INDEXTTS_LANG=zh              # zh / en / ja / ar / es
 #   export INDEXTTS_DURATION_FACTOR=1.0  # 0.5 最快 ~ 2.0 最慢
+#   export INDEXTTS_TEXT_NORMALIZATION=0 # 保留繁體原文（數字需自己寫成唸法）
 #   export INDEXTTS_USE_EMO_TEXT=1       # 依文字推情感
 #   export INDEXTTS_EMO_ALPHA=0.6
 #
-# 對應的 bridge 旗標：--lang / --duration-factor / --use-emo-text / --emo-alpha
+# 對應的 bridge 旗標：--lang / --duration-factor / --no-text-normalization
+#                     --use-emo-text / --emo-alpha
 
 tts:
   provider: indextts

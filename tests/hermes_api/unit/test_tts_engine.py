@@ -92,6 +92,17 @@ def test_lang_defaults_come_from_settings(reference_wav: Path) -> None:
     kwargs = model.infer_kwargs[-1]
     assert kwargs["lang"] == "zh"
     assert kwargs["duration_factor"] == 1.0
+    assert kwargs["text_normalization"] is True
+
+
+@pytest.mark.unit
+def test_text_normalization_can_be_turned_off(reference_wav: Path) -> None:
+    model = FakeModel()
+    engine, _ = _engine(model)
+
+    engine.generate(text="hi", reference_wav_path=reference_wav, text_normalization=False)
+
+    assert model.infer_kwargs[-1]["text_normalization"] is False
 
 
 @pytest.mark.unit

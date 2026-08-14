@@ -15,6 +15,7 @@ Environment variables:
     INDEXTTS_TOP_K            Optional top-k sampling (default: 30)
     INDEXTTS_LANG             Optional synthesis language, 2.5 only (default: zh)
     INDEXTTS_DURATION_FACTOR  Optional speed factor 0.5-2.0, 2.5 only (default: 1.0)
+    INDEXTTS_TEXT_NORMALIZATION  Set to 0/false to keep the text verbatim (default: on)
 """
 
 from __future__ import annotations
@@ -62,6 +63,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--duration-factor", type=float, default=_env_float("INDEXTTS_DURATION_FACTOR", 1.0)
     )
+    parser.add_argument(
+        "--no-text-normalization",
+        dest="text_normalization",
+        action="store_false",
+        default=_env_bool("INDEXTTS_TEXT_NORMALIZATION", True),
+        help="Keep the text verbatim (no digit expansion, no zh simplification)",
+    )
     parser.add_argument("--timeout", type=float, default=180.0)
     args = parser.parse_args(argv)
 
@@ -93,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
         "top_k": args.top_k,
         "lang": args.lang.lower(),
         "duration_factor": args.duration_factor,
+        "text_normalization": args.text_normalization,
         "response_format": "audio",
     }
 

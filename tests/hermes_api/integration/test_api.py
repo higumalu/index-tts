@@ -40,6 +40,7 @@ class FakeTTSEngine(TTSEngine):
         top_k: int | None = None,
         lang: str | None = None,
         duration_factor: float | None = None,
+        text_normalization: bool | None = None,
     ) -> SynthesisResult:
         self.calls.append(
             {
@@ -52,6 +53,7 @@ class FakeTTSEngine(TTSEngine):
                 "top_k": top_k,
                 "lang": lang,
                 "duration_factor": duration_factor,
+                "text_normalization": text_normalization,
             }
         )
         self._ready = True
@@ -202,6 +204,7 @@ def test_tts_audio_response(
             "top_k": 20,
             "lang": "ja",
             "duration_factor": 1.25,
+            "text_normalization": False,
             "response_format": "audio",
         },
     )
@@ -221,6 +224,7 @@ def test_tts_audio_response(
     assert call["top_k"] == 20
     assert call["lang"] == "ja"
     assert call["duration_factor"] == 1.25
+    assert call["text_normalization"] is False
 
 
 @pytest.mark.integration
