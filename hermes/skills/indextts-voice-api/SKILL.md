@@ -95,7 +95,25 @@ curl -s "${INDEXTTS_API_URL:-http://127.0.0.1:8001}/v1/health" | jq .
 ```
 
 預期欄位：`status`、`model_ready`、`voices_count`、`indextts_available`、
-`model_idle_sec`（模型未載入時為 `null`）、`idle_unload_sec`。
+`model_idle_sec`（模型未載入時為 `null`）、`idle_unload_sec`、`gpu`。
+
+### GPU 狀態
+
+`/v1/health` 會實際對 GPU 下一個小運算來驗證 CUDA context 還活著：
+
+| `gpu.healthy` | 意義 | HTTP |
+| --- | --- | --- |
+| `null` | 尚未建立 CUDA context（模型未載入），正常 | `200` |
+| `true` | GPU 正常 | `200` |
+| `false` | **CUDA context 已損毀，服務必須重啟** | `503` |
+
+`false` 時 `status` 為 `degraded`、`gpu.detail` 帶錯誤訊息，且回 **HTTP 503**——
+docker healthcheck 用 `curl -fsS`，因此容器會轉為 `unhealthy`。
+這是刻意設計：CUDA context 一旦中毒，模型物件還在、推論卻全數失敗，
+若 health 照回 200 就會像 2026-08-12 那次連續 16.5 小時假裝健康。
+
+**容器 `unhealthy` 不會自動重啟**（docker 的 restart policy 不看 healthcheck），
+需要人工 `docker compose restart indextts-api`。
 
 ## API 速查
 
@@ -272,6 +290,7 @@ Bridge 行為：讀 UTF-8 文字檔 → `POST /v1/tts`（`response_format=audio`
 | `422` lang 不支援 | 只接受 `zh`/`en`/`ja`/`ar`/`es` |
 | `422` duration_factor 超界 | 範圍 `0.5`–`2.0` |
 | `500` TTS 推論失敗 | 回應會帶 `request_id`，用它撈日誌：`docker logs indextts-api \| grep <id>` |
+| `503` health / 全部請求都 500 | 先看 `gpu.healthy`；為 `false` 代表 CUDA context 損毀，`docker compose restart indextts-api` |
 | bridge exit `2` | 設定 `INDEXTTS_DEFAULT_VOICE_ID` 或傳 `--voice-id` |
 | 首次 TTS 很慢 | lazy load 模型，屬預期 |
 
@@ -290,7 +309,7 @@ Bridge 行為：讀 UTF-8 文字檔 → `POST /v1/tts`（`response_format=audio`
 
 ## Verification Checklist
 
-- [ ] `GET /v1/health` 回 `status: ok`
+- [ ] `GET /v1/health` 回 `status: ok`（且 `gpu.healthy` 不是 `false`）
 - [ ] `POST /v1/voices` 回 201 與 32-hex `voice_id`
 - [ ] `POST /v1/tts` 產出可播放的 `.wav`（`X-Sample-Rate: 22050`）
 - [ ] `lang` 換成 `en` 也能合成；`lang=de` 回 `422`

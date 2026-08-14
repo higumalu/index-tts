@@ -44,6 +44,8 @@ services:
       stack: 67108864
     restart: unless-stopped
     healthcheck:
+      # /v1/health 在 GPU 探測失敗時回 503，curl -f 會讓容器轉為 unhealthy。
+      # 注意：unhealthy 不會自動重啟，需人工 docker compose restart。
       test: ["CMD", "curl", "-fsS", "http://localhost:8001/v1/health"]
       interval: 30s
       timeout: 5s

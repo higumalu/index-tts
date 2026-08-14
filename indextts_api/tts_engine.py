@@ -49,6 +49,78 @@ def indextts_importable() -> bool:
     return True
 
 
+@dataclass
+class GpuStatus:
+    available: bool  # 這台機器看得到 CUDA 裝置嗎
+    initialized: bool  # 本 process 已經建立 CUDA context 了嗎
+    healthy: bool | None  # None = 還沒有 context，沒東西可驗
+    detail: str | None = None
+    device_name: str | None = None
+    memory_used_mb: int | None = None
+
+
+# 只在健康狀態翻轉時記錄，否則每 30 秒一次的 health check 會洗版。
+_last_gpu_healthy: bool | None = None
+
+
+def probe_gpu() -> GpuStatus:
+    """實際對 GPU 下一個小運算，確認 CUDA context 還活著。
+
+    device-side assert（例如併發推論踩壞共享狀態）會讓整個 CUDA context 中毒，
+    此後所有 CUDA 呼叫立刻失敗，但模型物件還在、`/v1/health` 也照樣回 200。
+    2026-08-12 就是這樣連續 16.5 小時全數 500 卻顯示健康，只能靠人工重啟。
+    """
+    global _last_gpu_healthy
+
+    try:
+        import torch
+    except ImportError:
+        return GpuStatus(available=False, initialized=False, healthy=None, detail="torch 未安裝")
+
+    try:
+        if not torch.cuda.is_available():
+            return GpuStatus(available=False, initialized=False, healthy=None, detail="無 CUDA 裝置")
+        if not torch.cuda.is_initialized():
+            # 這裡不主動建立 context：那會讓模型未載入時也吃掉數百 MB VRAM，
+            # 破壞 lazy load 與閒置釋放的效果。沒有 context 就沒有中毒的可能。
+            return GpuStatus(available=True, initialized=False, healthy=None)
+    except Exception as err:
+        return GpuStatus(
+            available=False, initialized=False, healthy=False, detail=f"{type(err).__name__}: {err}"
+        )
+
+    try:
+        # .item() 會 synchronize，非同步累積的 CUDA 錯誤會在這裡爆出來。
+        probe = torch.zeros(1, device="cuda")
+        if float((probe + 1).item()) != 1.0:
+            raise RuntimeError("GPU 運算結果不正確")
+        status = GpuStatus(
+            available=True,
+            initialized=True,
+            healthy=True,
+            device_name=torch.cuda.get_device_name(),
+            memory_used_mb=int(torch.cuda.memory_reserved() / 2**20),
+        )
+    except Exception as err:
+        status = GpuStatus(
+            available=True,
+            initialized=True,
+            healthy=False,
+            detail=f"{type(err).__name__}: {err}",
+        )
+
+    if status.healthy != _last_gpu_healthy:
+        if status.healthy:
+            if _last_gpu_healthy is False:
+                logger.info("GPU 恢復正常")
+        else:
+            logger.error(
+                "GPU 探測失敗，CUDA context 可能已損毀，服務需要重啟：%s", status.detail
+            )
+        _last_gpu_healthy = status.healthy
+    return status
+
+
 def _cuda_reserved_bytes() -> int | None:
     """Bytes currently held by torch's CUDA caching allocator, or None if no CUDA context."""
     try:

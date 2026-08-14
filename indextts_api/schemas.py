@@ -84,8 +84,20 @@ class TTSJsonResponse(BaseModel):
     duration_sec: float
 
 
+class GpuStatusResponse(BaseModel):
+    available: bool = Field(description="這台機器看得到 CUDA 裝置嗎")
+    initialized: bool = Field(description="本 process 已建立 CUDA context 嗎")
+    healthy: bool | None = Field(
+        default=None,
+        description="GPU 小運算探測結果；null 表示尚無 CUDA context（模型未載入）",
+    )
+    detail: str | None = Field(default=None, description="探測失敗時的錯誤訊息")
+    device_name: str | None = None
+    memory_used_mb: int | None = None
+
+
 class HealthResponse(BaseModel):
-    status: str
+    status: str = Field(description="ok；GPU 探測失敗時為 degraded（並回 HTTP 503）")
     model_ready: bool
     voices_count: int
     indextts_available: bool
@@ -97,3 +109,4 @@ class HealthResponse(BaseModel):
         default=0.0,
         description="閒置自動釋放 VRAM 的門檻秒數；0 表示停用",
     )
+    gpu: GpuStatusResponse

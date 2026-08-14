@@ -90,6 +90,59 @@ def test_health_endpoint(client: TestClient) -> None:
 
 
 @pytest.mark.integration
+def test_health_reports_degraded_when_gpu_probe_fails(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GPU 死掉時 health 必須回 503，否則 docker healthcheck 會一直顯示健康。
+
+    2026-08-12 的事故就是這樣：CUDA context 中毒後連續 16.5 小時全數 500，
+    容器卻一路 healthy，沒有任何自動訊號。
+    """
+    from indextts_api.routers import health as health_router
+    from indextts_api.tts_engine import GpuStatus
+
+    monkeypatch.setattr(
+        health_router,
+        "probe_gpu",
+        lambda: GpuStatus(
+            available=True,
+            initialized=True,
+            healthy=False,
+            detail="RuntimeError: CUDA error: device-side assert triggered",
+        ),
+    )
+
+    resp = client.get("/v1/health")
+
+    assert resp.status_code == 503, "GPU 壞掉卻回 200，healthcheck 抓不到"
+    body = resp.json()
+    assert body["status"] == "degraded"
+    assert body["gpu"]["healthy"] is False
+    assert "device-side assert" in body["gpu"]["detail"]
+
+
+@pytest.mark.integration
+def test_health_is_ok_before_the_model_loads(client: TestClient) -> None:
+    """尚無 CUDA context 是正常狀態，不能被當成故障。"""
+    from indextts_api.routers import health as health_router
+    from indextts_api.tts_engine import GpuStatus
+
+    original = health_router.probe_gpu
+    health_router.probe_gpu = lambda: GpuStatus(
+        available=True, initialized=False, healthy=None
+    )
+    try:
+        resp = client.get("/v1/health")
+    finally:
+        health_router.probe_gpu = original
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["gpu"]["healthy"] is None
+
+
+@pytest.mark.integration
 def test_voice_crud_flow(client: TestClient, wav_base64: str) -> None:
     create_resp = client.post(
         "/v1/voices",
